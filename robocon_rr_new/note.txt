@@ -1,0 +1,24 @@
+Skydriod channel
+
+y1 = 2
+x1 = 3
+y2 = 1
+x2 = 0
+A = 8
+B = 9
+C = 10
+D = 11
+E = 4
+F = 7
+G = 5
+H = 6
+
+wheel
+
+- forward: rev1(high), rev2(low), rev3(high), rev4(low)
+- moveRight: rev1(high), rev2(high), rev3(low), rev4(low)
+- retateRight: rev1(low), rev2(low), rev3(low), rev4(low)
+- FDR: rev1(high), rev4(low)
+- FDL: rev2(low), rev3(high)
+- BDL: rev1(low), rev4(high)
+- BDR: rev2(high), rev3(low)
