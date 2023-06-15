@@ -20,15 +20,17 @@
 #define dir4 32
 
 const int Mpush_ring_Min = 1600;
-const int Mpush_ring_Max = 900;
+const int Mpush_ring_Max = 700;
 const int minspeed = 100;
-const int maxspeed = 150;
+const int maxspeed = 140;
 
 int canonSpeed = 1000;
 int buttonA = 282;
-int buttonB = 0;
-int buttonF = 0;
+
+int buttonB;
+int buttonG;
 int timeReload = 0;
+int canonMode;
 
 Servo Mpush_ring, esc;
 AccelStepper Mpull_ring(1, 41, 42);
@@ -62,13 +64,13 @@ void setup() {
   pinMode(maxPush, INPUT_PULLUP);
   Mpush_ring.attach(8, 544, 2400);
   esc.attach(escpin, 1000, 1500);
-  Mpull_ring.setMaxSpeed(320000);
+  Mpull_ring.setMaxSpeed(3000);
   Mpush_ring.writeMicroseconds(Mpush_ring_angle);
   esc.writeMicroseconds(900);
   sbus_rx.Begin();
   delay(5000);
   Movehome_ring();
-
+  
   channels = "";
   if (sbus_rx.Read()) {
     data = sbus_rx.data();
@@ -77,7 +79,7 @@ void setup() {
     }
     buttonA = data.ch[8];
     buttonB = 0;
-    buttonF = 3;
+    buttonG = 3;
   }
 }
 
@@ -96,33 +98,32 @@ void loop() {
   }
   if (manual == true) {
     if (data.ch[2] == 1002 && data.ch[3] == 1002 && data.ch[0] == 1002 && data.ch[1] == 1002) {
-      wheel("sto", 0, 3000);
+      wheel("sto", 0, 1000);
     }
     if (data.ch[0] != 1002) {
       if (data.ch[0] > 1202) {
-        int velocity = map(data.ch[0], 1202, 1722, minspeed, 110);
-        wheel("rr", velocity, 100);
+        int velocity = map(data.ch[0], 1202, 1722, 70, 90);
+        wheel("rr", velocity, 50);
       } else if (data.ch[0] < 802) {
-        int velocity = map(data.ch[0], 802, 282, minspeed, 110);
-        wheel("rl", velocity, 100);
+        int velocity = map(data.ch[0], 802, 282, 70, 90);
+        wheel("rl", velocity, 50);
       }
     } else {
       if (data.ch[2] > 1202 && data.ch[3] > 802 && data.ch[3] < 1202) {
         int velocity = map(data.ch[2], 1202, 1722, minspeed, maxspeed);
-        wheel("fw", velocity, 100);
+        wheel("fw", velocity, 50);
       } else if (data.ch[2] < 802 && data.ch[3] > 802 && data.ch[3] < 1202) {
         int velocity = map(data.ch[2], 802, 282, minspeed, maxspeed);
-        wheel("rv", velocity, 100);
+        wheel("rv", velocity, 50);
       }
       if (data.ch[3] > 1202 && data.ch[2] > 802 && data.ch[2] < 1202) {
         int velocity = map(data.ch[3], 1202, 1722, minspeed, maxspeed);
-        wheel("rg", velocity, 100);
+        wheel("rg", velocity, 50);
       } else if (data.ch[3] < 802 && data.ch[2] > 802 && data.ch[2] < 1202) {
         int velocity = map(data.ch[3], 802, 282, minspeed, maxspeed);
-        wheel("lf", velocity, 100);
+        wheel("lf", velocity, 50);
       }
     }
-    
     CanonSpeed();
     if (data.ch[8] != buttonA) {
       shoot();
@@ -131,34 +132,15 @@ void loop() {
     }
 
     //container
-    if(data.ch[9] != 1002){
+    if (data.ch[9] != 1002) {
       buttonB = 1;
       Movehome_ring();
     }
-    if(data.ch[9] == 1002 && buttonB == 1){
-      pick_up(85000);
+    if (data.ch[9] == 1002 && buttonB == 1) {
+      pick_up(5350);
       reload();
       buttonB = 0;
     }
-//    if (data.ch[7] == 1002){
-//      buttonF = 3;
-//    }
-//    if (buttonF != 0 && data.ch[7] != 1002) {
-//      if (data.ch[7] == 282) {
-//        buttonF = 2;
-//      } else if (data.ch[7] == 1722) {
-//        buttonF = 1;
-//      }
-//      if (buttonF == 2) {
-//        pick_up(85000);
-//        reload();
-//        buttonF = 0;
-//      }
-//      else if (buttonF == 1) {
-//        plat(false);
-//        buttonF = 0;
-//      }
-//    }
   }
   if (debug.available() > 0) {
 
@@ -176,7 +158,7 @@ void loop() {
       plat(true);
     }
     if (cmd.indexOf("ru") > -1) {
-      pick_up(85000);
+      pick_up(5350);
     }
   }
 }
@@ -199,22 +181,24 @@ void accMpush_ring(int dir_ang, int acc) {
 }
 
 void Movehome_ring() {
-  Mpull_ring.setSpeed(-10000);
+  Mpull_ring.setSpeed(-1000);
+  //  Mpull_ring.setAcceleration(1000);
   if (digitalRead(home_ring) == 1) {
     while (digitalRead(home_ring) == 1) {
       Mpull_ring.runSpeed();
     }
   }
   Mpull_ring.stop();
+  
 }
 
 void plat(boolean stat) {
-  Mpull_ring.setSpeed(10000);
-  Mpull_ring.setAcceleration(10000000);
+  Mpull_ring.setSpeed(1000);
+  Mpull_ring.setAcceleration(10000);
   if (stat == true) {
-    Mpull_ring.move(5550);
+    Mpull_ring.move(350);
   } else {
-    Mpull_ring.move(-5550);
+    Mpull_ring.move(-350);
   }
   while (Mpull_ring.distanceToGo() != 0) {
     Mpull_ring.run();
@@ -222,8 +206,8 @@ void plat(boolean stat) {
 }
 
 void pick_up(long h_ring) {
-  Mpull_ring.setSpeed(30000);
-  Mpull_ring.setAcceleration(10000000);
+  Mpull_ring.setSpeed(1000);
+  Mpull_ring.setAcceleration(1000);
   Mpull_ring.move(h_ring);
   while (Mpull_ring.distanceToGo() != 0) {
     Mpull_ring.run();
@@ -236,7 +220,7 @@ void reload() {
   accMpush_ring(Mpush_ring_Min, 500);
   delay(500);
   if (timeReload < 9) {
-    pick_up(5550);
+    pick_up(350);
     timeReload++;
   } else {
     Movehome_ring();
@@ -246,14 +230,14 @@ void reload() {
 
 void Mpush(int dir) {
   if (dir == 0) {
-    digitalWrite(ina, HIGH);
-    digitalWrite(inb, LOW);
+    analogWrite(ina, 255);
+    analogWrite(inb, 0);
   } else if (dir == 1) {
-    digitalWrite(ina, LOW);
-    digitalWrite(inb, HIGH);
+    analogWrite(ina, 0);
+    analogWrite(inb, 255);
   } else {
-    digitalWrite(ina, LOW);
-    digitalWrite(inb, LOW);
+    analogWrite(ina, 0);
+    analogWrite(inb, 0);
   }
 }
 
@@ -337,17 +321,55 @@ void accMove(int Speed, long tim) {
 }
 
 void CanonSpeed() {
-  if (canonSpeed < 1000) {
-    canonSpeed = 1000;
-  } else if (canonSpeed > 1900) {
-    canonSpeed = 1900;
+  if (data.ch[10] == 282) {
+    canonMode = 0;
+  } else if (data.ch[10] == 1002) {
+    canonMode = 1;
+  } else if (data.ch[10] == 1722) {
+    canonMode = 2;
   }
-  if (data.ch[5] != 1002) {
-    if (data.ch[5] == 282) {
-      canonSpeed --;
+
+  if (canonMode == 0) {
+    if (data.ch[5] != 1002) {
+      if (data.ch[5] == 282) {
+        canonSpeed --;
+      } else if (data.ch[5] == 1722) {
+        canonSpeed ++;
+      }
+    }
+    if (canonSpeed < 1000) {
+      canonSpeed = 1000;
+    } else if (canonSpeed > 1900) {
+      canonSpeed = 1900;
+    }
+  } else if (canonMode == 1) {
+    if (data.ch[5] == 1002) {
+      canonSpeed = 1000;
+    } else if (data.ch[5] == 282) {
+      canonSpeed = 1280;
     } else if (data.ch[5] == 1722) {
-      canonSpeed ++;
+      canonSpeed = 1141;
+    }
+  } else if (canonMode == 2) {
+    if (data.ch[5] == 1002) {
+      buttonG = 3;
+    }
+    if (buttonG != 0 && data.ch[5] != 1002) {
+      if (data.ch[5] == 282) {
+        buttonG = 2;
+      } else if (data.ch[5] == 1722) {
+        buttonG = 1;
+      }
+      if (buttonG == 2) {
+        canonSpeed--;
+        buttonG = 0;
+      }
+      else if (buttonG == 1) {
+        canonSpeed ++;
+        buttonG = 0;
+      }
     }
   }
   esc.writeMicroseconds(canonSpeed);
+  debug.println(canonSpeed);
 }
