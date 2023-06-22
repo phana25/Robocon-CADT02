@@ -21,15 +21,16 @@
 #define dir4 32
 //container steppers pin: 41, 42
 
-const int Mpush_ring_Min = 1600;
-const int Mpush_ring_Max = 700;
-const int minspeed = 100;
-const int maxspeed = 140;
+const int Mpush_ring_Min = 1500;
+const int Mpush_ring_Max = 800;
+int minspeed = 90;
+int maxspeed = 120;
 
 int canonSpeed = 1185;
 int buttonA = 282;
 int buttonB = 282;
 int buttonC;
+int switchF;
 int timeReload = 0;
 int canonMode;
 int containerMode;
@@ -81,6 +82,7 @@ void setup() {
     }
     buttonA = data.ch[8];
     buttonC = 0;
+    switchF = 0;
     buttonB = data.ch[9];
   }
 }
@@ -216,13 +218,10 @@ void reload() {
   accMpush_ring(Mpush_ring_Min, 500);
   delay(500);
   if (timeReload < 9) {
-    pick_up(350);
+    pick_up(330);
     timeReload++;
-  } else if (timeReload == 9) {
+  } else{
     timeReload++;
-  } else {
-    timeReload = 0;
-    Movehome_ring();
   }
 }
 
@@ -347,7 +346,7 @@ void wheel(String strcmd, int velo, long tim) {
   }
 }
 
-void accMove(int Speed, long tim, int offSet1, int offSet2, int offSet3, int offSet4) {
+void accMove(int Speed, long tim, int offSet1,int offSet2,int offSet3,int offSet4) {
   if (Speed > pwmval) {
     for (int i = pwmval; i <= Speed; i++) {
       analogWrite(pwm1, i + offSet1);
@@ -378,9 +377,9 @@ void CanonSpeed() {
   }
   if (canonMode == 0) {
     if (data.ch[5] == 1002) {
-      canonSpeed = 1400;
+      canonSpeed = 1462;
     } else if (data.ch[5] == 282) {
-      canonSpeed = 1300;
+      canonSpeed = 1317;
     } else if (data.ch[5] == 1722) {
       canonSpeed = 1800;
     }
@@ -428,15 +427,48 @@ void container() {
   if (containerMode == 0) {
     Movehome_ring();
     buttonC = 0;
+    minspeed = 100;
+    maxspeed = 120;
   }
   if (containerMode == 2 && buttonC == 0) {
     plat(true);
     buttonC = 1;
+    minspeed = 100;
+    maxspeed = 140;
   }
   if (containerMode == 1 && buttonC == 1) {
     plat(false);
-    pick_up(5330);
+    pick_up(5250);
     reload();
     buttonC = 0;
+  }
+  if (containerMode == 1 && data.ch[4] != 1002) {
+    if (data.ch[4] == 282) {
+      if (data.ch[7] == 1002) {
+        switchF = 1;
+      }
+      if (switchF == 1 && data.ch[7] != 1002) {
+        if (data.ch[7] == 1722) {
+          plat(false);
+          switchF = 0;
+        } else if (data.ch[7] == 282) {
+          plat(true);
+          switchF = 0;
+        }
+      }
+    }else if(data.ch[4] == 1722){
+      if (data.ch[7] == 1002) {
+        switchF = 1;
+      }
+      if (switchF == 1 && data.ch[7] != 1002) {
+        if (data.ch[7] == 1722) {
+          pick_up(30);
+          switchF = 0;
+        } else if (data.ch[7] == 282) {
+          pick_up(-30);
+          switchF = 0;
+        }
+      }
+    }
   }
 }
