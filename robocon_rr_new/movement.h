@@ -1,4 +1,3 @@
-
 void moveForward() {
   int dutyCycle = map(data.ch[2], 1500, 1950, minSpeed, maxSpeed);
   digitalWrite(rev1, LOW);
@@ -13,7 +12,7 @@ void moveForward() {
   digitalWrite(brake2, HIGH);
   digitalWrite(brake3, HIGH);
   digitalWrite(brake4, HIGH);
-  Serial.println("Foward");
+  Serial.println("Forward");
 }
 
 void moveBackward() {

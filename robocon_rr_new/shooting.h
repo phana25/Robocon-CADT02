@@ -11,9 +11,6 @@ void canonSpeed(){
   mpu.getEvent(&a, &g, &temp);
   Serial.print("Acceleration2 X: ");
   lcd.print(a.acceleration.x);
-  
-  
- 
 }
 
 void printLCD(){
