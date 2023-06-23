@@ -4,12 +4,12 @@
 #include <Servo.h>
 
 #define debug Serial
-#define home_ring 48 //container sensor pin
-#define minPush 49 //ring pusher sensor pin
-#define maxPush 12 //ring pusher sensor pin
-#define ina 9 //driver pin
-#define inb 10 //driver pin
-#define escpin 6 //cannon esc pin
+#define home_ring 48  //container sensor pin
+#define minPush 49    //ring pusher sensor pin
+#define maxPush 12    //ring pusher sensor pin
+#define ina 9         //driver pin
+#define inb 10        //driver pin
+#define escpin 6      //cannon esc pin
 //wheel motors pins
 #define pwm1 3
 #define pwm2 2
@@ -23,8 +23,11 @@
 
 const int Mpush_ring_Min = 1600;
 const int Mpush_ring_Max = 800;
-int minspeed = 90;
-int maxspeed = 120;
+
+// movement speed
+int min_speed = 90;
+int max_speed = 110;
+const int const_tim = 50;
 
 int canonSpeed = 1185;
 int buttonA = 282;
@@ -46,6 +49,12 @@ bfs::SbusRx sbus_rx(&Serial1);
 bfs::SbusData data;
 String channels = "";
 boolean manual = false;
+const int min_val = 282;
+const int mid_val = 1002;
+const int max_val = 1722;
+
+const int pre_min_val = 802;
+const int pre_max_val = 1202;
 
 void setup() {
 
@@ -101,33 +110,36 @@ void loop() {
     manual = false;
   }
   if (manual == true) {
-    if (data.ch[2] == 1002 && data.ch[3] == 1002 && data.ch[0] == 1002 && data.ch[1] == 1002) {
-      wheel("sto", 0, 1000);
+    if (data.ch[2] == mid_val && data.ch[3] == mid_val && data.ch[0] == mid_val && data.ch[1] == mid_val) {
+      wheels("sto", 0, 1000);
+      // set brake to stop
     }
-    if (data.ch[0] != 1002) {
-      if (data.ch[0] > 1202) {
-        int velocity = map(data.ch[0], 1202, 1722, 70, 90);
-        wheel("rr", velocity, 50);
-      } else if (data.ch[0] < 802) {
-        int velocity = map(data.ch[0], 802, 282, 70, 90);
-        wheel("rl", velocity, 50);
+    if (data.ch[0] != mid_val) {
+      if (data.ch[0] > pre_max_val) {
+        int velocity = map(data.ch[0], pre_max_val, max_val, 60, 80);
+        wheels("rr", velocity, const_tim);
+      } else if (data.ch[0] < pre_min_val) {
+        int velocity = map(data.ch[0], pre_min_val, min_val, 60, 80);
+        wheels("rl", velocity, const_tim);
       }
     } else {
-      if (data.ch[2] > 1202 && data.ch[3] > 802 && data.ch[3] < 1202) {
-        int velocity = map(data.ch[2], 1202, 1722, minspeed, maxspeed);
-        wheel("fw", velocity, 50);
-      } else if (data.ch[2] < 802 && data.ch[3] > 802 && data.ch[3] < 1202) {
-        int velocity = map(data.ch[2], 802, 282, minspeed, maxspeed);
-        wheel("rv", velocity, 50);
+      if (data.ch[2] > pre_max_val && data.ch[3] > pre_min_val && data.ch[3] < pre_max_val) {
+        int velocity = map(data.ch[2], pre_max_val, max_val, min_speed, max_speed);
+        wheels("fw", velocity, const_tim);
+      } else if (data.ch[2] < pre_min_val && data.ch[3] > pre_min_val && data.ch[3] < pre_max_val) {
+        int velocity = map(data.ch[2], pre_min_val, min_val, min_speed, max_speed);
+        wheels("rv", velocity, const_tim);
       }
-      if (data.ch[3] > 1202 && data.ch[2] > 802 && data.ch[2] < 1202) {
-        int velocity = map(data.ch[3], 1202, 1722, minspeed, maxspeed);
-        wheel("rg", velocity, 50);
-      } else if (data.ch[3] < 802 && data.ch[2] > 802 && data.ch[2] < 1202) {
-        int velocity = map(data.ch[3], 802, 282, minspeed, maxspeed);
-        wheel("lf", velocity, 50);
+      if (data.ch[3] > pre_max_val && data.ch[2] > pre_min_val && data.ch[2] < pre_max_val) {
+        int velocity = map(data.ch[3], pre_max_val, max_val, min_speed, max_speed);
+        wheels("rg", velocity, const_tim);
+      } else if (data.ch[3] < pre_min_val && data.ch[2] > pre_min_val && data.ch[2] < pre_max_val) {
+        int velocity = map(data.ch[3], pre_min_val, min_val, min_speed, max_speed);
+        wheels("lf", velocity, const_tim);
       }
     }
+
+    //turn on esc cannon
     CanonSpeed();
 
     //shoot
@@ -220,8 +232,11 @@ void reload() {
   if (timeReload < 9) {
     pick_up(330);
     timeReload++;
-  } else{
+  } else if (timeReload == 9) {
     timeReload++;
+  } else {
+    timeReload = 0;
+    Movehome_ring();
   }
 }
 
@@ -249,11 +264,11 @@ void shoot() {
   Mpush(2);
 }
 
-void wheel(String strcmd, int velo, long tim) {
-  int offSet1;
-  int offSet2;
-  int offSet3;
-  int offSet4;
+void wheels(String strcmd, float velo, long tim) {
+  float offSet1;
+  float offSet2;
+  float offSet3;
+  float offSet4;
 
   if (strcmd.indexOf("sto") > -1) {
     offSet1 = 0;
@@ -271,10 +286,10 @@ void wheel(String strcmd, int velo, long tim) {
     // offSet2 = 0;
     // offSet3 = 10;
     // offSet4 = 13;
-    offSet1 = 0;
+    offSet1 = 10;
     offSet2 = 0;
     offSet3 = 0;
-    offSet4 = 0;
+    offSet4 = 13;
     accMove(velo, tim, offSet1, offSet2, offSet3, offSet4);
   }
   if (strcmd.indexOf("rv") > -1) {
@@ -289,7 +304,7 @@ void wheel(String strcmd, int velo, long tim) {
     offSet1 = 0;
     offSet2 = 0;
     offSet3 = 0;
-    offSet4 = 0;
+    offSet4 = 13;
     accMove(velo, tim, offSet1, offSet2, offSet3, offSet4);
   }
   if (strcmd.indexOf("lf") > -1) {
@@ -304,7 +319,7 @@ void wheel(String strcmd, int velo, long tim) {
     offSet1 = 0;
     offSet2 = 0;
     offSet3 = 0;
-    offSet4 = 0;
+    offSet4 = 15;
     accMove(velo, tim, offSet1, offSet2, offSet3, offSet4);
   }
   if (strcmd.indexOf("rg") > -1) {
@@ -319,7 +334,7 @@ void wheel(String strcmd, int velo, long tim) {
     offSet1 = 0;
     offSet2 = 0;
     offSet3 = 0;
-    offSet4 = 0;
+    offSet4 = 15;
     accMove(velo, tim, offSet1, offSet2, offSet3, offSet4);
   }
   if (strcmd.indexOf("rr") > -1) {
@@ -330,7 +345,7 @@ void wheel(String strcmd, int velo, long tim) {
     offSet1 = 0;
     offSet2 = 0;
     offSet3 = 0;
-    offSet4 = 0;
+    offSet4 = 15;
     accMove(velo, tim, offSet1, offSet2, offSet3, offSet4);
   }
   if (strcmd.indexOf("rl") > -1) {
@@ -341,26 +356,61 @@ void wheel(String strcmd, int velo, long tim) {
     offSet1 = 0;
     offSet2 = 0;
     offSet3 = 0;
-    offSet4 = 0;
+    offSet4 = 15;
     accMove(velo, tim, offSet1, offSet2, offSet3, offSet4);
   }
 }
 
-void accMove(int Speed, long tim, int offSet1,int offSet2,int offSet3,int offSet4) {
+// void accMove(int Speed, long tim, int offSet1, int offSet2, int offSet3, int offSet4) {
+//   if (Speed > pwmval) {
+//     for (int i = pwmval; i <= Speed; i++) {
+//       analogWrite(pwm1, i + offSet1);
+//       analogWrite(pwm2, i + offSet2);
+//       analogWrite(pwm3, i + offSet3);
+//       analogWrite(pwm4, i + offSet4);
+
+//       delayMicroseconds(tim);
+//     }
+//   } else if (Speed < pwmval) {
+//     for (int i = pwmval; i >= Speed; i--) {
+//       analogWrite(pwm1, i + offSet1);
+//       analogWrite(pwm2, i + offSet2);
+//       analogWrite(pwm3, i + offSet3);
+//       analogWrite(pwm4, i + offSet4);
+
+//       delayMicroseconds(tim);
+//     }
+//   }
+//   pwmval = Speed;
+// }
+
+void accMove(float Speed, long tim, float offSet1, float offSet2, float offSet3, float offSet4) {
   if (Speed > pwmval) {
-    for (int i = pwmval; i <= Speed; i++) {
-      analogWrite(pwm1, i + offSet1);
-      analogWrite(pwm2, i + offSet2);
-      analogWrite(pwm3, i + offSet3);
-      analogWrite(pwm4, i + offSet4);
+    float tmp = Speed - pwmval;
+    for (float i = 0; i <= tmp; i++) {
+      analogWrite(pwm1, pwmval + (i * (1 + offSet1 / (Speed - pwmval))));
+      analogWrite(pwm2, pwmval + (i * (1 + offSet2 / (Speed - pwmval))));
+      analogWrite(pwm3, pwmval + (i * (1 + offSet3 / (Speed - pwmval))));
+      analogWrite(pwm4, pwmval + (i * (1 + offSet4 / (Speed - pwmval))));
+
+      Serial.print(String(pwmval + (i * (1 + offSet1 / (Speed - pwmval)))));
+      Serial.print(":");
+      Serial.println(String(pwmval + (i * (1 + offSet4 / (Speed - pwmval)))));
+
       delayMicroseconds(tim);
     }
   } else if (Speed < pwmval) {
-    for (int i = pwmval; i >= Speed; i--) {
-      analogWrite(pwm1, i - offSet1);
-      analogWrite(pwm2, i - offSet2);
-      analogWrite(pwm3, i - offSet3);
-      analogWrite(pwm4, i - offSet4);
+    float tmp = pwmval - Speed;
+    for (float i = 0; i <= tmp; i++) {
+      analogWrite(pwm1, pwmval - (i * (1 - offSet1 / (pwmval - Speed))));
+      analogWrite(pwm2, pwmval - (i * (1 - offSet2 / (pwmval - Speed))));
+      analogWrite(pwm3, pwmval - (i * (1 - offSet3 / (pwmval - Speed))));
+      analogWrite(pwm4, pwmval - (i * (1 - offSet4 / (pwmval - Speed))));
+
+      Serial.print(String(pwmval - (i * (1 - offSet1 / (pwmval - Speed)))));
+      Serial.print(":");
+      Serial.println(String(pwmval - (i * (1 - offSet4 / (pwmval - Speed)))));
+
       delayMicroseconds(tim);
     }
   }
@@ -413,7 +463,9 @@ void CanonSpeed() {
     canonSpeed = 2000;
   }
   esc.writeMicroseconds(canonSpeed);
-  debug.println(canonSpeed);
+  // debug.println(canonSpeed);
+  //type 1: 1317(old ring), 1310(new ring)
+  //type 2: 1462(new ring)
 }
 
 void container() {
@@ -427,48 +479,19 @@ void container() {
   if (containerMode == 0) {
     Movehome_ring();
     buttonC = 0;
-    minspeed = 100;
-    maxspeed = 120;
+    min_speed = 100;
+    max_speed = 120;
   }
   if (containerMode == 2 && buttonC == 0) {
     plat(true);
     buttonC = 1;
-    minspeed = 100;
-    maxspeed = 140;
+    min_speed = 100;
+    max_speed = 140;
   }
   if (containerMode == 1 && buttonC == 1) {
     plat(false);
     pick_up(5250);
     reload();
     buttonC = 0;
-  }
-  if (containerMode == 1 && data.ch[4] != 1002) {
-    if (data.ch[4] == 282) {
-      if (data.ch[7] == 1002) {
-        switchF = 1;
-      }
-      if (switchF == 1 && data.ch[7] != 1002) {
-        if (data.ch[7] == 1722) {
-          plat(false);
-          switchF = 0;
-        } else if (data.ch[7] == 282) {
-          plat(true);
-          switchF = 0;
-        }
-      }
-    }else if(data.ch[4] == 1722){
-      if (data.ch[7] == 1002) {
-        switchF = 1;
-      }
-      if (switchF == 1 && data.ch[7] != 1002) {
-        if (data.ch[7] == 1722) {
-          pick_up(30);
-          switchF = 0;
-        } else if (data.ch[7] == 282) {
-          pick_up(-30);
-          switchF = 0;
-        }
-      }
-    }
   }
 }
