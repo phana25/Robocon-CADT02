@@ -21,7 +21,7 @@
 #define dir4 32
 //container steppers pin: 41, 42
 
-const int Mpush_ring_Min = 1500;
+const int Mpush_ring_Min = 1600;
 const int Mpush_ring_Max = 800;
 int minspeed = 90;
 int maxspeed = 120;
